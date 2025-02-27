@@ -49,3 +49,8 @@ Since the application relies on Apache Kafka for event-driven processing, I fine
 * <b>Compression</b> (compression.type): Reduces payload size, improving Kafka's performance.
 * <b>Buffering</b> (buffer.memory): Allocates sufficient memory for storing messages before transmission.
 * <b>Retries & Acknowledgments</b> (retries, acks): Ensures message reliability while maintaining low latency.
+
+### Testing
+
+To run application you should have Java 21+ and Docker(docker-compose)
+execute command `docker compose up -d --build` 
