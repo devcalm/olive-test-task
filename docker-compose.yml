@@ -1,0 +1,134 @@
+version: "3.4"
+
+services:
+
+  app:
+    image: data-pipeline:latest
+    container_name: data-pipeline-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo
+      - kafka
+    ports:
+      - ${SERVER_PORT}:${SERVER_PORT}
+    environment:
+      - SERVER_PORT=${SERVER_PORT}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_DB=${MONGO_DB}
+      - KAFKA_HOST=${KAFKA_HOST}
+      - KAFKA_PORT=${KAFKA_PORT}
+    healthcheck:
+      test: [ "CMD", "sh", "-c", "curl -f http://localhost:$SERVER_PORT/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - data-pipeline-network
+
+  mongo:
+    image: mongo:8.0
+    container_name: data-pipeline-mongo
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    volumes:
+      - "data-pipeline-mongo-data:/data/db"
+    networks:
+      - data-pipeline-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    container_name: data-pipeline-kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: 'kafka-cluster-1'
+    volumes:
+      - data-pipeline-kafka-volume:/var/lib/kafka
+    networks:
+      - data-pipeline-network
+
+  kafka-ui:
+    container_name: data-pipeline-kafka-ui
+    image: provectuslabs/kafka-ui:v0.7.2
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    volumes:
+      - ./kafka-ui/config.yml:/etc/kafkaui/dynamic_config.yaml
+    environment:
+      KAFKA_CLUSTERS_0_NAME: kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_AUDIT_TOPICAUDITENABLED: 'true'
+      KAFKA_CLUSTERS_0_AUDIT_CONSOLEAUDITENABLED: 'true'
+    networks:
+      - data-pipeline-network
+
+  prometheus:
+    image: prom/prometheus:v3.2.0
+    container_name: data-pipeline-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - data-pipeline-network
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: data-pipeline-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=123456
+    volumes:
+      - data-pipeline-grafana-volume:/var/lib/grafana
+    networks:
+      - data-pipeline-network
+
+  k6:
+    image: grafana/k6:latest
+    container_name: data-pipeline-k6
+    environment:
+      - SERVER_HOST=${SERVER_HOST}
+      - SERVER_PORT=${SERVER_PORT}
+    depends_on:
+      - app
+    volumes:
+      - ./scripts:/scripts
+    command: [ "run", "/scripts/load_test.js" ]
+    networks:
+      - data-pipeline-network
+
+volumes:
+  data-pipeline-mongo-data:
+  data-pipeline-kafka-volume:
+  data-pipeline-grafana-volume:
+
+networks:
+  data-pipeline-network:
+    driver: bridge

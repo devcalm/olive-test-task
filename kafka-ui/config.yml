@@ -1,0 +1,13 @@
+auth:
+  type: LOGIN_FORM
+
+kafka:
+  clusters:
+    - bootstrapServers: kafka-data-pipeline:9092
+      name: kafka-data-pipeline
+
+spring:
+  security:
+    user:
+      name: admin
+      password: 12345678

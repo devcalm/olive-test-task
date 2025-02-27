@@ -1,0 +1,66 @@
+server:
+  port: ${SERVER_PORT}
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: data-pipeline
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_HOST}:${MONGO_PORT}
+      database: ${MONGO_DB}
+      auto-index-creation: true
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST}:${KAFKA_PORT}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        batch.size: 32768
+        linger.ms: 20
+        compression.type: snappy
+        buffer.memory: 67108864
+        retries: 3
+        request.timeout.ms: 5000
+        acks: 1
+    consumer:
+      group-id: detection-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        max.poll.records: 1000
+        session.timeout.ms: 15000
+        heartbeat.interval.ms: 5000
+        auto.commit.interval.ms: 1000
+        enable.auto.commit: true
+        fetch.min.bytes: 1024
+        fetch.max.wait.ms: 500
+    listener:
+      ack-mode: batch
+      concurrency: 3
+      poll-timeout: 3000
+      missing-topics-fatal: false
+
+
+resilience4j:
+  ratelimiter:
+    instances:
+      detectionRateLimiter:
+        limit-for-period: 1000
+        limit-refresh-period: 1s
+        timeout-duration: 1s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics
+  metrics:
+    enable:
+      resilience4j: true
+      prometheus: true
