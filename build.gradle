@@ -69,7 +69,6 @@ tasks.named('test') {
 
 def jacocoExclusions = [
 		"**/web/ExceptionAdviserController.class",
-		"**/web/ExceptionAdviserController.class",
 		"**/infrastructure/aspect/LoggingAspect.class",
 		"**/domain/exception/*",
 		"**/App.class",
