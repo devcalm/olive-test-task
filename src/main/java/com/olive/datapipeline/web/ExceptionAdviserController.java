@@ -26,7 +26,7 @@ public class ExceptionAdviserController {
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public ProblemDetail handleRateLimitException(RequestNotPermitted ex,
                                                   final Locale locale, final HttpRequest request) {
-        return  buildProblemDetail(HttpStatus.TOO_MANY_REQUESTS, ex, locale, request);
+        return buildProblemDetail(HttpStatus.TOO_MANY_REQUESTS, ex, locale, request);
     }
 
     @ExceptionHandler(Exception.class)
