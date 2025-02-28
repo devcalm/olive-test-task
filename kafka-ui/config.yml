@@ -3,8 +3,8 @@ auth:
 
 kafka:
   clusters:
-    - bootstrapServers: kafka-data-pipeline:9092
-      name: kafka-data-pipeline
+    - bootstrapServers: kafka:9092
+      name: kafka
 
 spring:
   security:
